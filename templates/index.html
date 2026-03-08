@@ -169,21 +169,28 @@
       }
     };
 
-    function makeChart(id, color) {
+    function makeChart(id, color, yOverrides = {}) {
       return new Chart(document.getElementById(id), {
         ...chartDefaults,
         data: {
           labels: [],
           datasets: [{ data: [], borderColor: color, backgroundColor: color + '22', fill: true }]
         },
-        options: { ...chartDefaults.options }
+        options: {
+          ...chartDefaults.options,
+          scales: {
+            ...chartDefaults.options.scales,
+            y: { ...chartDefaults.options.scales.y, ...yOverrides }
+          }
+        }
       });
     }
 
-    const cpuChart  = makeChart('cpuChart',  '#38bdf8');
-    const memChart  = makeChart('memChart',  '#4ade80');
+    const percentScale = { min: 0, max: 100 };
+    const cpuChart  = makeChart('cpuChart',  '#38bdf8', percentScale);
+    const memChart  = makeChart('memChart',  '#4ade80', percentScale);
     const tempChart = makeChart('tempChart', '#f87171');
-    const diskChart = makeChart('diskChart', '#facc15');
+    const diskChart = makeChart('diskChart', '#facc15', percentScale);
 
     function colorClass(val, warn, crit) {
       if (val >= crit) return 'red';
