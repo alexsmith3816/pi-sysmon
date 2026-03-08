@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Flask web dashboard for pi-sysmon stats."""
 
+import os
 import sqlite3
 import time
 import psutil
@@ -11,6 +12,8 @@ DB_PATH = "/home/alex/code/sysmon.db"
 
 
 def query_db(sql, args=()):
+    if not os.path.exists(DB_PATH):
+        return []
     con = sqlite3.connect(DB_PATH)
     con.row_factory = sqlite3.Row
     rows = con.execute(sql, args).fetchall()
