@@ -198,6 +198,18 @@
       return 'green';
     }
 
+    function percentChartColor(maxVal) {
+      if (maxVal > 80) return '#f87171';       // red
+      if (maxVal > 60) return '#facc15';       // yellow
+      if (maxVal > 30) return '#38bdf8';       // blue
+      return '#4ade80';                        // green
+    }
+
+    function applyChartColor(chart, color) {
+      chart.data.datasets[0].borderColor = color;
+      chart.data.datasets[0].backgroundColor = color + '22';
+    }
+
     function updateCard(id, val, warn, crit, suffix='%') {
       const el = document.getElementById(id);
       el.textContent = val != null ? val.toFixed(1) + suffix : '—';
@@ -227,16 +239,21 @@
         return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
       });
 
-      function load(chart, key) {
+      function load(chart, key, colorByMax = false) {
+        const data = rows.map(r => r[key]);
         chart.data.labels = labels;
-        chart.data.datasets[0].data = rows.map(r => r[key]);
+        chart.data.datasets[0].data = data;
+        if (colorByMax) {
+          const max = Math.max(...data.filter(v => v != null));
+          applyChartColor(chart, percentChartColor(max));
+        }
         chart.update();
       }
 
-      load(cpuChart,  'cpu_percent');
-      load(memChart,  'mem_percent');
+      load(cpuChart,  'cpu_percent', true);
+      load(memChart,  'mem_percent', true);
       load(tempChart, 'temp_c');
-      load(diskChart, 'disk_percent');
+      load(diskChart, 'disk_percent', true);
     }
 
     refreshLive();
