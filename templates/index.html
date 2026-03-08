@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Pi System Monitor</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: #0f1117;
+      color: #e2e8f0;
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      padding: 1.5rem;
+    }
+
+    h1 {
+      font-size: 1.4rem;
+      font-weight: 600;
+      color: #94a3b8;
+      margin-bottom: 1.5rem;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+    }
+
+    h1 span { color: #38bdf8; }
+
+    .cards {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: 1rem;
+      margin-bottom: 2rem;
+    }
+
+    .card {
+      background: #1e2330;
+      border-radius: 10px;
+      padding: 1rem 1.2rem;
+      border: 1px solid #2d3748;
+    }
+
+    .card .label {
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: #64748b;
+      margin-bottom: 0.4rem;
+    }
+
+    .card .value {
+      font-size: 2rem;
+      font-weight: 700;
+      line-height: 1;
+    }
+
+    .card .sub {
+      font-size: 0.75rem;
+      color: #64748b;
+      margin-top: 0.3rem;
+    }
+
+    .green  { color: #4ade80; }
+    .yellow { color: #facc15; }
+    .red    { color: #f87171; }
+    .blue   { color: #38bdf8; }
+    .purple { color: #c084fc; }
+
+    .charts {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+      gap: 1.5rem;
+    }
+
+    .chart-box {
+      background: #1e2330;
+      border-radius: 10px;
+      padding: 1.2rem;
+      border: 1px solid #2d3748;
+    }
+
+    .chart-box h2 {
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: #64748b;
+      margin-bottom: 1rem;
+    }
+
+    .uptime-bar {
+      text-align: center;
+      background: #1e2330;
+      border-radius: 10px;
+      padding: 0.6rem 1rem;
+      border: 1px solid #2d3748;
+      margin-bottom: 1.5rem;
+      font-size: 0.8rem;
+      color: #64748b;
+    }
+
+    .uptime-bar span { color: #94a3b8; font-weight: 600; }
+  </style>
+</head>
+<body>
+
+  <h1>Pi <span>System Monitor</span></h1>
+
+  <div class="uptime-bar">Uptime: <span id="uptime">—</span></div>
+
+  <div class="cards">
+    <div class="card">
+      <div class="label">CPU</div>
+      <div class="value" id="cpu-val">—</div>
+      <div class="sub">percent used</div>
+    </div>
+    <div class="card">
+      <div class="label">Memory</div>
+      <div class="value" id="mem-val">—</div>
+      <div class="sub" id="mem-sub">—</div>
+    </div>
+    <div class="card">
+      <div class="label">Disk</div>
+      <div class="value" id="disk-val">—</div>
+      <div class="sub" id="disk-sub">—</div>
+    </div>
+    <div class="card">
+      <div class="label">Temperature</div>
+      <div class="value" id="temp-val">—</div>
+      <div class="sub">celsius</div>
+    </div>
+    <div class="card">
+      <div class="label">Swap</div>
+      <div class="value" id="swap-val">—</div>
+      <div class="sub">percent used</div>
+    </div>
+  </div>
+
+  <div class="charts">
+    <div class="chart-box">
+      <h2>CPU % — Last 24h</h2>
+      <canvas id="cpuChart"></canvas>
+    </div>
+    <div class="chart-box">
+      <h2>Memory % — Last 24h</h2>
+      <canvas id="memChart"></canvas>
+    </div>
+    <div class="chart-box">
+      <h2>Temperature °C — Last 24h</h2>
+      <canvas id="tempChart"></canvas>
+    </div>
+    <div class="chart-box">
+      <h2>Disk % — Last 24h</h2>
+      <canvas id="diskChart"></canvas>
+    </div>
+  </div>
+
+  <script>
+    const chartDefaults = {
+      type: 'line',
+      options: {
+        animation: false,
+        responsive: true,
+        plugins: { legend: { display: false } },
+        scales: {
+          x: { ticks: { color: '#475569', maxTicksLimit: 8 }, grid: { color: '#1a2035' } },
+          y: { ticks: { color: '#475569' }, grid: { color: '#1a2035' }, min: 0 }
+        },
+        elements: { point: { radius: 0 }, line: { tension: 0.3, borderWidth: 2 } }
+      }
+    };
+
+    function makeChart(id, color) {
+      return new Chart(document.getElementById(id), {
+        ...chartDefaults,
+        data: {
+          labels: [],
+          datasets: [{ data: [], borderColor: color, backgroundColor: color + '22', fill: true }]
+        },
+        options: { ...chartDefaults.options }
+      });
+    }
+
+    const cpuChart  = makeChart('cpuChart',  '#38bdf8');
+    const memChart  = makeChart('memChart',  '#4ade80');
+    const tempChart = makeChart('tempChart', '#f87171');
+    const diskChart = makeChart('diskChart', '#facc15');
+
+    function colorClass(val, warn, crit) {
+      if (val >= crit) return 'red';
+      if (val >= warn) return 'yellow';
+      return 'green';
+    }
+
+    function updateCard(id, val, warn, crit, suffix='%') {
+      const el = document.getElementById(id);
+      el.textContent = val != null ? val.toFixed(1) + suffix : '—';
+      el.className = 'value ' + (val != null ? colorClass(val, warn, crit) : '');
+    }
+
+    async function refreshLive() {
+      const r = await fetch('/api/live');
+      const d = await r.json();
+      updateCard('cpu-val',  d.cpu_percent,  70, 90);
+      updateCard('mem-val',  d.mem_percent,  70, 90);
+      updateCard('disk-val', d.disk_percent, 70, 90);
+      updateCard('swap-val', d.swap_percent, 50, 80);
+      updateCard('temp-val', d.temp_c, 70, 80, '°');
+      document.getElementById('mem-sub').textContent  = `${d.mem_used_gb} / ${d.mem_total_gb} GB`;
+      document.getElementById('disk-sub').textContent = `${d.disk_used_gb} / ${d.disk_total_gb} GB`;
+      document.getElementById('uptime').textContent   = d.uptime;
+    }
+
+    async function refreshHistory() {
+      const r = await fetch('/api/history');
+      const rows = await r.json();
+      if (!rows.length) return;
+
+      const labels = rows.map(r => {
+        const d = new Date(r.timestamp * 1000);
+        return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      });
+
+      function load(chart, key) {
+        chart.data.labels = labels;
+        chart.data.datasets[0].data = rows.map(r => r[key]);
+        chart.update();
+      }
+
+      load(cpuChart,  'cpu_percent');
+      load(memChart,  'mem_percent');
+      load(tempChart, 'temp_c');
+      load(diskChart, 'disk_percent');
+    }
+
+    refreshLive();
+    refreshHistory();
+    setInterval(refreshLive, 5000);
+    setInterval(refreshHistory, 60000);
+  </script>
+</body>
+</html>
