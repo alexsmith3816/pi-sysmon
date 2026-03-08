@@ -43,7 +43,7 @@ Runs silently in the background, sampling system stats every 60 seconds and writ
 
 ### 3. `app.py` + `templates/index.html` — Web Dashboard
 
-A Flask web server that serves a dark-themed dashboard viewable from any browser on the local network.
+A Flask web server that serves a dark-themed dashboard. Binds to `127.0.0.1` (localhost only) for security — use a reverse proxy such as nginx to expose it on the network.
 
 **Features:**
 - Live stat cards (CPU, memory, disk, temperature, swap) — refreshes every 5 seconds
@@ -159,17 +159,13 @@ source .venv/bin/activate
 python3 app.py
 ```
 
-Then open a browser on any device on the same network and go to:
+The dashboard is accessible locally at:
 
 ```
-http://<your-pi-ip>:5000
+http://127.0.0.1:5000
 ```
 
-Find your Pi's IP address with:
-
-```bash
-hostname -I
-```
+To access it from another device on the network, set up a reverse proxy (e.g. nginx) pointing to `127.0.0.1:5000`.
 
 ---
 
