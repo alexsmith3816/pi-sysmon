@@ -3,7 +3,7 @@
 
 import time
 import psutil
-from rich.console import Console
+from rich.console import Console, Group
 from rich.table import Table
 from rich.panel import Panel
 from rich.columns import Columns
@@ -12,10 +12,13 @@ from rich.text import Text
 
 
 def get_cpu():
-    percent = psutil.cpu_percent(interval=None)
-    per_core = psutil.cpu_percent(interval=None, percpu=True)
-    freq = psutil.cpu_freq()
-    freq_str = f"{freq.current:.0f} MHz" if freq else "N/A"
+    try:
+        percent = psutil.cpu_percent(interval=None)
+        per_core = psutil.cpu_percent(interval=None, percpu=True)
+        freq = psutil.cpu_freq()
+        freq_str = f"{freq.current:.0f} MHz" if freq else "N/A"
+    except Exception:
+        return Panel("Unavailable", title="CPU", border_style="cyan")
     bar = make_bar(percent)
     return Panel(
         f"{bar} [bold]{percent:.1f}%[/bold]\nFreq: {freq_str}\nCores: {', '.join(f'{c:.0f}%' for c in per_core)}",
@@ -25,8 +28,11 @@ def get_cpu():
 
 
 def get_memory():
-    mem = psutil.virtual_memory()
-    swap = psutil.swap_memory()
+    try:
+        mem = psutil.virtual_memory()
+        swap = psutil.swap_memory()
+    except Exception:
+        return Panel("Unavailable", title="Memory", border_style="green")
     mem_bar = make_bar(mem.percent)
     swap_bar = make_bar(swap.percent)
     return Panel(
@@ -38,9 +44,12 @@ def get_memory():
 
 
 def get_disk():
-    disk = psutil.disk_usage("/")
+    try:
+        disk = psutil.disk_usage("/")
+        io = psutil.disk_io_counters()
+    except Exception:
+        return Panel("Unavailable", title="Disk (/)", border_style="yellow")
     bar = make_bar(disk.percent)
-    io = psutil.disk_io_counters()
     io_str = f"Read: {fmt_bytes(io.read_bytes)}  Write: {fmt_bytes(io.write_bytes)}" if io else ""
     return Panel(
         f"{bar} [bold]{disk.percent:.1f}%[/bold]  {fmt_bytes(disk.used)} / {fmt_bytes(disk.total)}\n{io_str}",
@@ -50,7 +59,12 @@ def get_disk():
 
 
 def get_network():
-    net = psutil.net_io_counters()
+    try:
+        net = psutil.net_io_counters()
+        if net is None:
+            raise ValueError("No network counters available")
+    except Exception:
+        return Panel("Unavailable", title="Network", border_style="magenta")
     return Panel(
         f"Sent:     {fmt_bytes(net.bytes_sent)}\n"
         f"Received: {fmt_bytes(net.bytes_recv)}\n"
@@ -108,6 +122,7 @@ def get_processes(n=8):
 
 
 def make_bar(percent, width=20):
+    percent = max(0.0, min(100.0, float(percent)))
     filled = int(width * percent / 100)
     color = "red" if percent >= 90 else "yellow" if percent >= 70 else "green"
     bar = f"[{color}]{'█' * filled}[/{color}]{'░' * (width - filled)}"
@@ -126,11 +141,14 @@ def build_layout():
     top = Columns([get_cpu(), get_memory()], equal=True)
     mid = Columns([get_disk(), get_network(), get_temperature()], equal=True)
     procs = get_processes()
-    uptime = time.time() - psutil.boot_time()
-    h, m = divmod(int(uptime) // 60, 60)
-    d, h = divmod(h, 24)
-    footer = Text(f"Uptime: {d}d {h}h {m}m   Refresh: 2s   Press Ctrl+C to quit", justify="center", style="dim")
-    from rich.console import Group
+    try:
+        uptime = time.time() - psutil.boot_time()
+        h, m = divmod(int(uptime) // 60, 60)
+        d, h = divmod(h, 24)
+        uptime_str = f"{d}d {h}h {m}m"
+    except Exception:
+        uptime_str = "N/A"
+    footer = Text(f"Uptime: {uptime_str}   Refresh: 2s   Press Ctrl+C to quit", justify="center", style="dim")
     return Group(top, mid, procs, footer)
 
 
