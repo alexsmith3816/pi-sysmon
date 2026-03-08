@@ -169,6 +169,30 @@ To access it from another device on the network, set up a reverse proxy (e.g. ng
 
 ---
 
+## Reverse Proxy (nginx)
+
+Flask binds to `127.0.0.1:5000` only. nginx proxies external traffic (including Tailscale) to Flask on port 80.
+
+### Install and configure
+
+```bash
+sudo apt install nginx -y
+sudo cp nginx/sysmon.conf /etc/nginx/sites-available/sysmon
+sudo ln -s /etc/nginx/sites-available/sysmon /etc/nginx/sites-enabled/sysmon
+sudo rm /etc/nginx/sites-enabled/default
+sudo nginx -t
+sudo systemctl restart nginx
+```
+
+The dashboard will then be accessible at:
+
+```
+http://<your-pi-ip>
+http://<your-pi-tailscale-ip>
+```
+
+---
+
 ## Auto-start on Boot
 
 All three components are configured to start automatically on boot via cron.
